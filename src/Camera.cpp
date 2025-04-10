@@ -34,54 +34,54 @@ class Camera{
 
     //retorna um vetor com as cores
     std::vector<Color> shot(std::vector<objeto*> const &objetos, std::vector<Luz> const &luzes, Luz Ia = Luz(Color(0.25, 0.25, 0.25)), bool showpercentage = true, vetor backgroud_top = vetor(0.3, 0.3, 0.7), vetor backgroud_bottom = vetor(1, 1, 1)){
-    std::vector<Color> tela(v_res*h_res);
+        std::vector<Color> tela(v_res*h_res);
 
-    double pixel_unit = 1.0 / h_res;
-    int samples = 4;
+        double pixel_unit = 1.0 / h_res;
+        int samples = 4;
 
-    for(int y=0; y<v_res; y++) {
-        #pragma omp parallel for
-        for(int x=0; x<h_res; x++)
-        {
-            Color cor_final(0, 0, 0);
+        for(int y=0; y<v_res; y++) {
+            #pragma omp parallel for
+            for(int x=0; x<h_res; x++)
+            {
+                Color cor_final(0, 0, 0);
 
-            for(int sy = 0; sy < samples; sy++) {
-                for(int sx = 0; sx < samples; sx++) {
-                    double offset_x = (sx + 0.5) / samples;
-                    double offset_y = (sy + 0.5) / samples;
+                for(int sy = 0; sy < samples; sy++) {
+                    for(int sx = 0; sx < samples; sx++) {
+                        double offset_x = (sx + 0.5) / samples;
+                        double offset_y = (sy + 0.5) / samples;
 
-                    point tl = c - v*dist
-                               + u*(pixel_unit*(v_res/2.0 - y - offset_y))
-                               - w*(pixel_unit*(h_res/2.0 - x - offset_x));
+                        point tl = c - v*dist
+                                + u*(pixel_unit*(v_res/2.0 - y - offset_y))
+                                - w*(pixel_unit*(h_res/2.0 - x - offset_x));
 
-                    ray r(c, (tl-c));
+                        ray r(c, (tl-c));
 
-                    double seno = (1.0 + r.get_direction().getY()) / 2.0;
-                    __background = backgroud_top * ((double)(v_res - y)/(double)v_res) + backgroud_bottom * ((double)y/(double)v_res);
-                    Intersection inter(__background);
-                    objeto* obi = NULL;
-                    double dist = DOUBLEINF;
+                        double seno = (1.0 + r.get_direction().getY()) / 2.0;
+                        __background = backgroud_top * ((double)(v_res - y)/(double)v_res) + backgroud_bottom * ((double)y/(double)v_res);
+                        Intersection inter(__background);
+                        objeto* obi = NULL;
+                        double dist = DOUBLEINF;
 
-                    for(auto &obj : objetos){
-                        auto dt = obj->dist_intersection(r);
-                        if(dt < dist && dt > 0.0)
-                            dist = dt,
-                            obi = obj;
+                        for(auto &obj : objetos){
+                            auto dt = obj->dist_intersection(r);
+                            if(dt < dist && dt > 0.0)
+                                dist = dt,
+                                obi = obj;
+                        }
+
+                        if(obi) inter = std::min<Intersection>(inter, obi->get_intersection(r, Ia, luzes, objetos));
+
+                        cor_final = cor_final + inter.color;
                     }
-
-                    if(obi) inter = std::min<Intersection>(inter, obi->get_intersection(r, Ia, luzes, objetos));
-
-                    cor_final = cor_final + inter.color;
                 }
+
+                tela[x + y*h_res] = cor_final / (samples * samples);
             }
-
-            tela[x + y*h_res] = cor_final / (samples * samples);
+            if(showpercentage) std::cout << (y+1.0) / v_res * 100.0 << "%\r";
         }
-        if(showpercentage) std::cout << (y+1.0) / v_res * 100.0 << "%\r";
-    }
 
-    return tela;
-}
+        return tela;
+    }
 
     void move(vetor delta){
         c = c + delta;
